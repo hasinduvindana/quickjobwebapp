@@ -3,14 +3,40 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TypeAnimation } from "react-type-animation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Smartphone, Search } from "lucide-react";
 import Link from "next/link";
+import { collection, getFirestore, getDocs, query, where } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { useRouter } from "next/navigation";
 
 const images: string[] = ["/slider1.jpg", "/slider2.jpg", "/slider3.jpg"];
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCdtJBz4_PcbYgEsDM4ib3WBq-6mSdBxwA",
+  authDomain: "quickjobwebapp.firebaseapp.com",
+  projectId: "quickjobwebapp",
+  storageBucket: "quickjobwebapp.appspot.com",
+  messagingSenderId: "320266323421",
+  appId: "1:320266323421:web:76dcf28a61f4100e5de234",
+  measurementId: "G-3ZYK787XM5",
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const firestore = getFirestore(app);
 
 export default function Home() {
   const [current, setCurrent] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [showQuickFindModal, setShowQuickFindModal] = useState<boolean>(false);
+  const router = useRouter();
+  
+  // State for dynamic counts
+  const [employeeCount, setEmployeeCount] = useState<number>(500);
+  const [jobPostsCount, setJobPostsCount] = useState<number>(1200);
+  const [usersCount, setUsersCount] = useState<number>(10000);
+  const [reviewsCount, setReviewsCount] = useState<number>(4500);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -19,8 +45,94 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch counts from Firestore
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const employeeQuery = query(
+          collection(firestore, "userlog"),
+          where("accountType", "==", "Employee")
+        );
+        const employeeSnapshot = await getDocs(employeeQuery);
+        setEmployeeCount(employeeSnapshot.size);
+
+        const usersSnapshot = await getDocs(collection(firestore, "userlog"));
+        setUsersCount(usersSnapshot.size);
+
+        const jobPostsSnapshot = await getDocs(collection(firestore, "jobposts"));
+        setJobPostsCount(jobPostsSnapshot.size);
+
+        console.log("Counts fetched:", {
+          employees: employeeSnapshot.size,
+          users: usersSnapshot.size,
+          jobPosts: jobPostsSnapshot.size
+        });
+      } catch (error) {
+        console.error("Error fetching counts:", error);
+      }
+    };
+
+    fetchCounts();
+  }, []);
+
+  // Handle Quick Find button click
+  const handleQuickFindClick = () => {
+    setShowQuickFindModal(true);
+    setTimeout(() => {
+      setShowQuickFindModal(false);
+      router.push('/quickfind');
+    }, 3000);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-r from-black via-purple-900 to-black text-white flex flex-col">
+      {/* Quick Find Loading Modal */}
+      {showQuickFindModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="bg-black/70 backdrop-blur-xl p-8 rounded-2xl border border-white/20 text-center"
+          >
+            <motion.img
+              src="/logo.png"
+              alt="QuickJob Logo"
+              className="h-20 mx-auto mb-6"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.h3
+              className="text-2xl font-bold text-white mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              Loading Quick Find...
+            </motion.h3>
+            <motion.div
+              className="flex justify-center space-x-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-3 h-3 bg-green-400 rounded-full"
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: i * 0.2,
+                  }}
+                />
+              ))}
+            </motion.div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Navbar */}
       <nav className="flex justify-between items-center px-6 py-4 bg-black/30 backdrop-blur-md shadow-md relative">
         {/* Logo */}
@@ -29,15 +141,30 @@ export default function Home() {
           QuickJob
         </div>
 
+        {/* Center Buttons - Mobile App & Quick Find */}
+        <div className="hidden md:flex space-x-4 absolute left-1/2 transform -translate-x-1/2">
+          <button className="flex items-center space-x-2 px-5 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-blue-500/25 hover:scale-105 group">
+            <Smartphone className="h-5 w-5 group-hover:text-blue-400 transition-colors duration-300" />
+            <span>Mobile App</span>
+          </button>
+          <button 
+            onClick={handleQuickFindClick}
+            className="flex items-center space-x-2 px-5 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-green-500/25 hover:scale-105 group"
+          >
+            <Search className="h-5 w-5 group-hover:text-green-400 transition-colors duration-300" />
+            <span>Quick Find</span>
+          </button>
+        </div>
+
         {/* Desktop Buttons */}
         <div className="hidden md:flex space-x-4">
           <Link href="/signin">
-            <button className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-600 transition">
+            <button className="px-6 py-3 rounded-xl bg-white/10 backdrop-blur-lg border border-white/20 text-white font-medium hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg hover:shadow-purple-500/25 hover:scale-105">
               Sign In
             </button>
           </Link>
           <Link href="/signup">
-            <button className="px-4 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 transition">
+            <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-lg border border-purple-400/30 text-white font-medium hover:from-purple-500/30 hover:to-pink-500/30 hover:border-purple-400/50 transition-all duration-300 shadow-lg hover:shadow-pink-500/25 hover:scale-105">
               Sign Up
             </button>
           </Link>
@@ -56,15 +183,26 @@ export default function Home() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-16 right-6 bg-black/80 backdrop-blur-lg p-4 rounded-xl flex flex-col space-y-3 md:hidden"
+            className="absolute top-16 right-6 bg-black/70 backdrop-blur-xl p-4 rounded-xl flex flex-col space-y-3 md:hidden border border-white/10 shadow-2xl"
           >
+            <button className="flex items-center justify-center space-x-2 w-full px-4 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-blue-500/25">
+              <Smartphone className="h-5 w-5" />
+              <span>Mobile App</span>
+            </button>
+            <button 
+              onClick={handleQuickFindClick}
+              className="flex items-center justify-center space-x-2 w-full px-4 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-green-500/25"
+            >
+              <Search className="h-5 w-5" />
+              <span>Quick Find</span>
+            </button>
             <Link href="/signin">
-              <button className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-600 transition">
+              <button className="w-full px-4 py-3 rounded-xl bg-white/10 backdrop-blur-lg border border-white/20 text-white font-medium hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg hover:shadow-purple-500/25">
                 Sign In
               </button>
             </Link>
             <Link href="/signup">
-              <button className="px-4 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 transition">
+              <button className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-lg border border-purple-400/30 text-white font-medium hover:from-purple-500/30 hover:to-pink-500/30 hover:border-purple-400/50 transition-all duration-300 shadow-lg hover:shadow-pink-500/25">
                 Sign Up
               </button>
             </Link>
@@ -86,9 +224,8 @@ export default function Home() {
           />
         ))}
 
-        {/* Overlay with Typing Text */}
         <div className="absolute text-center px-4">
-          <h1 className="text-3xl md:text-5xl font-bold mb-4 drop-shadow-2xl shadow-black text-shadow-lg">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 drop-shadow-2xl shadow-black text-shadow-lg">
             <TypeAnimation
               sequence={[
                 "Welcome to QuickJob..!", 2000,
@@ -148,7 +285,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A7.962 7.962 0 0112 15c2.21 0 4.21.896 5.657 2.343M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-white">500+</h3>
+            <h3 className="text-3xl font-bold text-white">{employeeCount.toLocaleString()}+</h3>
             <p className="text-purple-300 mt-1">Employees</p>
           </motion.div>
 
@@ -170,7 +307,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M5 8h14M5 16h14M5 12h.01M5 20h.01" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-white">1,200+</h3>
+            <h3 className="text-3xl font-bold text-white">{jobPostsCount.toLocaleString()}+</h3>
             <p className="text-pink-300 mt-1">Job Posts</p>
           </motion.div>
 
@@ -192,7 +329,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20h6m-6 0a4 4 0 01-4-4H3m6 4a4 4 0 004-4h2a4 4 0 004 4m-6-8a4 4 0 100-8 4 4 0 000 8z" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-white">10,000+</h3>
+            <h3 className="text-3xl font-bold text-white">{usersCount.toLocaleString()}+</h3>
             <p className="text-blue-300 mt-1">Users</p>
           </motion.div>
 
@@ -213,7 +350,7 @@ export default function Home() {
                 <path d="M12 .587l3.668 7.431 8.167 1.188-5.917 5.762 1.396 8.13L12 18.896l-7.314 3.844 1.396-8.13L.165 9.206l8.167-1.188z" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-white">4,500+</h3>
+            <h3 className="text-3xl font-bold text-white">{reviewsCount.toLocaleString()}+</h3>
             <p className="text-yellow-300 mt-1">Reviews</p>
           </motion.div>
         </div>

@@ -1,25 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc, collection, getFirestore } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, getDocs, getFirestore } from "firebase/firestore";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { FiSettings } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebaseConfig";
+import app from "@/lib/firebaseConfig"; // Import the app instance
 
+// Initialize Firestore
+const firestore = getFirestore(app);
 
-// Add this line to get your Firestore instance
-const firestore = getFirestore();
+// Add District interface
+interface District {
+  id: string;
+  districtName: string;
+  cities: string[];
+  createdAt: Date;
+}
 
 export default function EmployeeSettings() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
-  type Skill = {
-    skill: string;
-    experience: string;
-  };
+
+  type Skill = { skill: string; experience: string };
 
   type UserData = {
     firstName: string;
@@ -28,6 +33,8 @@ export default function EmployeeSettings() {
     skills: Skill[];
     serviceLocation: string;
     contactNumber: string;
+    district: string;  // Add district field
+    city: string;      // Add city field
   };
 
   const [userData, setUserData] = useState<UserData>({
@@ -37,27 +44,101 @@ export default function EmployeeSettings() {
     skills: [{ skill: "", experience: "" }],
     serviceLocation: "",
     contactNumber: "",
+    district: "",      // Initialize district
+    city: "",          // Initialize city
   });
+
   const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [docId, setDocId] = useState<string | null>(null);
 
-  // Get email from localStorage (stored during signin)
-  const email = localStorage.getItem("userFirstName"); // You might want to store email separately
+  // Add state for districts and cities
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [districtsLoading, setDistrictsLoading] = useState(true);
 
-  // Load user data
+  // ✅ Get email from localStorage (with safety check)
+  const [email, setEmail] = useState<string | null>(null);
+
+  // Get email from localStorage after component mounts
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("email");
+    setEmail(storedEmail);
+  }, []);
+
+  // Fetch districts from map collection
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      try {
+        setDistrictsLoading(true);
+        const querySnapshot = await getDocs(collection(firestore, "map"));
+        const districtsList: District[] = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          districtName: doc.data().districtName || "",
+          cities: doc.data().cities || [],
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+        }));
+        
+        // Sort districts alphabetically
+        districtsList.sort((a, b) => a.districtName.localeCompare(b.districtName));
+        setDistricts(districtsList);
+        console.log("Fetched districts:", districtsList);
+      } catch (error) {
+        console.error("Error fetching districts:", error);
+      } finally {
+        setDistrictsLoading(false);
+      }
+    };
+
+    fetchDistricts();
+  }, []);
+
+  // Update available cities when district changes
+  useEffect(() => {
+    if (userData.district) {
+      const selectedDistrict = districts.find(d => d.districtName === userData.district);
+      if (selectedDistrict) {
+        setAvailableCities(selectedDistrict.cities.sort());
+      } else {
+        setAvailableCities([]);
+      }
+    } else {
+      setAvailableCities([]);
+    }
+    // Reset city selection when district changes
+    if (userData.city && userData.district) {
+      const selectedDistrict = districts.find(d => d.districtName === userData.district);
+      if (selectedDistrict && !selectedDistrict.cities.includes(userData.city)) {
+        setUserData(prev => ({ ...prev, city: "" }));
+      }
+    }
+  }, [userData.district, districts]);
+
+  // Load user data from Firestore
   useEffect(() => {
     if (!email) return;
 
     const fetchUserData = async () => {
       try {
-        const userDocRef = doc(collection(firestore, "userlog"), email);
-        const userSnap = await getDoc(userDocRef);
-        if (userSnap.exists()) {
-          const existingData = userSnap.data();
-          setUserData((prevUserData) => ({
-            ...prevUserData,
-            ...existingData,
-            email: existingData.email || email
+        const q = query(collection(firestore, "userlog"), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const docSnap = querySnapshot.docs[0];
+          const userDataFromDb = docSnap.data();
+          setDocId(docSnap.id); // ✅ save doc ID
+          setUserData((prev) => ({
+            ...prev,
+            firstName: userDataFromDb.firstName || "",
+            lastName: userDataFromDb.lastName || "",
+            email: userDataFromDb.email || email,
+            skills: userDataFromDb.skills || [{ skill: "", experience: "" }],
+            serviceLocation: userDataFromDb.serviceLocation || "",
+            contactNumber: userDataFromDb.contactNumber || "",
+            district: userDataFromDb.district || "",      // Load district
+            city: userDataFromDb.city || "",              // Load city
           }));
+        } else {
+          console.warn("No user found with this email:", email);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -66,6 +147,21 @@ export default function EmployeeSettings() {
 
     fetchUserData();
   }, [email]);
+
+  // Handle district change
+  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedDistrict = e.target.value;
+    setUserData({ 
+      ...userData, 
+      district: selectedDistrict,
+      city: "" // Reset city when district changes
+    });
+  };
+
+  // Handle city change
+  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setUserData({ ...userData, city: e.target.value });
+  };
 
   // Handle adding new skill row
   const addSkill = () => {
@@ -118,10 +214,13 @@ export default function EmployeeSettings() {
       skills: [{ skill: "", experience: "" }],
       serviceLocation: "",
       contactNumber: "",
+      district: "",
+      city: "",
     });
     setProfileImage(null);
   };
 
+  // ✅ Save updates back to same userlog document
   const handleSave = async () => {
     // Enhanced validations
     if (!userData.firstName || !userData.lastName || !userData.contactNumber) {
@@ -143,32 +242,56 @@ export default function EmployeeSettings() {
       return;
     }
 
+    // Validate district and city
+    if (!userData.district) {
+      alert("Please select a district.");
+      return;
+    }
+
+    if (!userData.city) {
+      alert("Please select a city.");
+      return;
+    }
+
+    if (!docId) {
+      alert("User document not found!");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Save to new collection "employeeinfo"
-      await setDoc(doc(collection(firestore, "employeeinfo"), email!), {
+      const userDocRef = doc(firestore, "userlog", docId);
+      await updateDoc(userDocRef, {
         ...userData,
         profileImageName: profileImage?.name || "",
-        savedAt: new Date(),
         lastModified: new Date(),
       });
 
-      // Show saving animation for 3s
       setTimeout(() => {
         setLoading(false);
         setSaved(true);
-
-        setTimeout(() => {
-          router.push("/employeedashboard"); // Use Next.js router instead
-        }, 3000);
-      }, 3000);
+        setTimeout(() => router.push("/employeedashboard"), 3000);
+      }, 2000);
     } catch (err) {
       console.error("Save error:", err);
       alert("Failed to save data. Please try again.");
       setLoading(false);
     }
   };
+
+  // Show loading state while email is being retrieved
+  if (!email) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-purple-900 to-black text-white flex items-center justify-center">
+        <motion.div
+          className="w-12 h-12 border-4 border-t-purple-500 border-b-purple-200 border-l-purple-200 border-r-purple-200 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-purple-900 to-black text-white p-6">
@@ -236,6 +359,54 @@ export default function EmployeeSettings() {
             disabled
             className="w-full px-4 py-2 rounded-lg bg-black/20 border border-purple-600/50 text-gray-400 cursor-not-allowed"
           />
+        </div>
+
+        {/* District and City Selection */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-purple-300 mb-2">Location</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* District Dropdown */}
+            <select
+              value={userData.district}
+              onChange={handleDistrictChange}
+              disabled={districtsLoading}
+              className="w-full px-4 py-2 rounded-lg bg-black/30 border border-purple-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+            >
+              <option value="">
+                {districtsLoading ? "Loading districts..." : "Select District"}
+              </option>
+              {districts.map((district) => (
+                <option key={district.id} value={district.districtName}>
+                  {district.districtName}
+                </option>
+              ))}
+            </select>
+
+            {/* City Dropdown */}
+            <select
+              value={userData.city}
+              onChange={handleCityChange}
+              disabled={!userData.district || availableCities.length === 0}
+              className="w-full px-4 py-2 rounded-lg bg-black/30 border border-purple-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+            >
+              <option value="">
+                {!userData.district 
+                  ? "Select district first" 
+                  : availableCities.length === 0 
+                    ? "No cities available" 
+                    : "Select City"
+                }
+              </option>
+              {availableCities.map((city, index) => (
+                <option key={`${userData.district}-${city}-${index}`} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </div>
+          {districtsLoading && (
+            <p className="text-xs text-gray-400 mt-1">Loading location data...</p>
+          )}
         </div>
 
         {/* Skills Table */}

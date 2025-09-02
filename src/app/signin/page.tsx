@@ -37,13 +37,17 @@ export default function SigninPage() {
           setFirstName(userData.firstName);
           setSuccess(true);
           localStorage.setItem("userFirstName", userData.firstName);
+          localStorage.setItem("email", userData.email);
 
           setTimeout(() => {
             sessionStorage.setItem("firstName", userData.firstName);
+            sessionStorage.setItem("email", userData.email);
             if (userData.accountType === "Employee") {
               router.push("/employeedashboard");
             } else if (userData.accountType === "Job Supplier") {
               router.push("/publisherdashboard");
+            } else if (userData.accountType === "Admin") {
+              router.push("/admindashboard");
             } else {
               alert("Unknown account type!");
             }

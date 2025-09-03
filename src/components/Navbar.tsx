@@ -20,7 +20,7 @@ export default function Navbar({ firstName, onLogout, dashboardType }: NavbarPro
     if (pathname.includes("/employeedashboard") || dashboardType === "employee") {
       router.push("/employee-settings");    
     } else if (pathname.includes("/publisherdashboard") || dashboardType === "publisher") {
-      router.push("/publisher-settings");
+      router.push("");
     } else {
       console.warn("Unknown dashboard path:", pathname);
     }

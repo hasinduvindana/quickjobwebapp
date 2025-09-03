@@ -283,12 +283,25 @@ export default function JobDetailsPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-gray-700/50 rounded-lg h-64 flex items-center justify-center border-2 border-dashed border-gray-600">
-              <div className="text-center">
-                <div className="text-4xl mb-2">📷</div>
-                <span className="text-gray-400">No images available for this job</span>
+            // Show category image from public folder if no images
+            jobDetails.category && jobDetails.category.length > 0 ? (
+              <div className="flex items-center justify-center">
+                <Image
+                  src={`/${jobDetails.category[0]}.jpg`}
+                  width={400}
+                  height={300}
+                  alt={jobDetails.title}
+                  className="rounded-lg object-cover w-full h-64"
+                />
               </div>
-            </div>
+            ) : (
+              <div className="bg-gray-700/50 rounded-lg h-64 flex items-center justify-center border-2 border-dashed border-gray-600">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📷</div>
+                  <span className="text-gray-400">No images available for this job</span>
+                </div>
+              </div>
+            )
           )}
         </div>
 

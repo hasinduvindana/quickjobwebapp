@@ -384,59 +384,6 @@ export default function PublisherDashboard() {
 
         {/* Main Content */}
         <div className="flex-1 p-6">
-          {/* Filter Section */}
-          <div className="bg-black/50 backdrop-blur-md shadow-md p-4 flex flex-wrap items-center gap-4 mb-6">
-            <input
-              type="text"
-              placeholder="Search ads..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="border border-purple-700/50 rounded px-3 py-2 flex-1 min-w-[200px] bg-black/30 placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-            <select
-              value={skill}
-              onChange={(e) => setSkill(e.target.value)}
-              className="border border-purple-700/50 rounded px-3 py-2 bg-black/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="">All Categories</option>
-              <option value="Plumbing">Plumbing</option>
-              <option value="Carpentry">Carpentry</option>
-              <option value="Mechanic">Mechanic</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Painting">Painting</option>
-            </select>
-            <select
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              className="border border-purple-700/50 rounded px-3 py-2 bg-black/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="">All Districts</option>
-              <option value="Colombo">Colombo</option>
-              <option value="Kandy">Kandy</option>
-              <option value="Galle">Galle</option>
-              <option value="Jaffna">Jaffna</option>
-              <option value="Matara">Matara</option>
-            </select>
-            <select
-              value={town}
-              onChange={(e) => setTown(e.target.value)}
-              className="border border-purple-700/50 rounded px-3 py-2 bg-black/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="">All Towns</option>
-              <option value="Colombo">Colombo</option>
-              <option value="Kandy">Kandy</option>
-              <option value="Galle">Galle</option>
-              <option value="Jaffna">Jaffna</option>
-              <option value="Matara">Matara</option>
-            </select>
-            <button
-              onClick={handleClearFilters}
-              className="bg-purple-600/70 hover:bg-purple-700/80 text-white px-4 py-2 rounded-lg transition"
-            >
-              Clear Filters
-            </button>
-          </div>
-
           {!selectedAd ? (
             <div className="text-gray-300 text-center mt-20">
               <p className="text-lg">Select an ad to view details</p>

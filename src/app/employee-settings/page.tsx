@@ -55,6 +55,9 @@ export default function EmployeeSettings() {
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [districtsLoading, setDistrictsLoading] = useState(true);
 
+  // Add state for job categories
+  const [jobCategories, setJobCategories] = useState<string[]>([]);
+
   // ✅ Get email from localStorage (with safety check)
   const [email, setEmail] = useState<string | null>(null);
 
@@ -89,6 +92,20 @@ export default function EmployeeSettings() {
     };
 
     fetchDistricts();
+  }, []);
+
+  // Fetch job categories for dropdown
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const snapshot = await getDocs(collection(firestore, "jobcategory"));
+        const names = snapshot.docs.map(doc => doc.data().name).filter(Boolean);
+        setJobCategories(names);
+      } catch (error) {
+        console.error("Error fetching job categories:", error);
+      }
+    };
+    fetchCategories();
   }, []);
 
   // Update available cities when district changes
@@ -207,24 +224,39 @@ export default function EmployeeSettings() {
 
   // Removed unused handleProfileImageChange function
 
-  // Auto-get current location
+  // Add state for location loading
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  // Auto-get current location with high accuracy and waiting time
   const handleGetLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserData({
-            ...userData,
-            serviceLocation: `${position.coords.latitude},${position.coords.longitude}`,
-          });
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          alert("Unable to get your location. Please enter manually.");
-        }
-      );
-    } else {
-      alert("Geolocation is not supported by your browser.");
-    }
+    setLocationLoading(true);
+    // Wait 2 seconds before capturing location for better accuracy
+    setTimeout(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserData({
+              ...userData,
+              serviceLocation: `${position.coords.latitude},${position.coords.longitude}`,
+            });
+            setLocationLoading(false);
+          },
+          (error) => {
+            console.error("Geolocation error:", error);
+            alert("Unable to get your location. Please enter manually.");
+            setLocationLoading(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000, // 10 seconds max wait
+            maximumAge: 0,
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by your browser.");
+        setLocationLoading(false);
+      }
+    }, 2000); // Wait 2 seconds before requesting location
   };
 
   const handleClear = () => {
@@ -462,13 +494,17 @@ export default function EmployeeSettings() {
           </div>
           {userData.skills.map((s, idx) => (
             <div key={idx} className="flex gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="Skill (e.g., Plumbing)"
+              {/* Skill Dropdown */}
+              <select
                 value={s.skill}
                 onChange={(e) => handleSkillChange(idx, "skill", e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-purple-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+                className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-purple-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Select Skill</option>
+                {jobCategories.map((cat, i) => (
+                  <option key={i} value={cat}>{cat}</option>
+                ))}
+              </select>
               <input
                 type="text"
                 placeholder="Experience (e.g., 2 years)"
@@ -503,12 +539,14 @@ export default function EmployeeSettings() {
               value={userData.serviceLocation}
               onChange={(e) => setUserData({ ...userData, serviceLocation: e.target.value })}
               className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-purple-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              disabled={locationLoading}
             />
             <button
               onClick={handleGetLocation}
               className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg transition whitespace-nowrap"
+              disabled={locationLoading}
             >
-              📍 Get Location
+              {locationLoading ? "Getting Location..." : "📍 Get Location"}
             </button>
           </div>
 

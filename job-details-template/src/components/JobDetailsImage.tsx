@@ -14,6 +14,6 @@ const JobDetailsImage: React.FC<JobDetailsImageProps> = ({ imageUrl }) => {
       )}
     </div>
   );
-};
+};a
 
 export default JobDetailsImage;

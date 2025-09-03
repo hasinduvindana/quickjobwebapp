@@ -6,7 +6,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebaseConfig";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
-import { collection, getDocs, getFirestore, query, where, Timestamp } from "firebase/firestore";
+import { collection, getDocs, getFirestore, query, where, Timestamp, doc, updateDoc, increment } from "firebase/firestore";
 
 // Initialize Firestore
 const firestore = getFirestore();
@@ -230,7 +230,16 @@ export default function EmployeeDashboard() {
     }, 3000);
   };
 
-  const handleJobPostClick = (postId: string) => {
+  const handleJobPostClick = async (postId: string) => {
+    try {
+      // Increment views in Firestore
+      const postRef = doc(firestore, "jobposts", postId);
+      await updateDoc(postRef, {
+        views: increment(1),
+      });
+    } catch (error) {
+      console.error("Failed to increment views:", error);
+    }
     router.push(`/job-details/${postId}`);
   };
 
@@ -342,56 +351,67 @@ export default function EmployeeDashboard() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredJobPosts.map((post) => (
-              <div
-                key={post.id}
-                className="bg-black/40 backdrop-blur-md shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
-                onClick={() => handleJobPostClick(post.id)}
-              >
-                {/* Display first image or placeholder */}
-                {post.images && post.images.length > 0 ? (
-                  <Image
-                    src={post.images[0]}
-                    width={400}
-                    height={200}
-                    alt={post.title}
-                    className="w-full h-40 object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-40 bg-gray-700 flex items-center justify-center">
-                    <span className="text-gray-400">No Image</span>
-                  </div>
-                )}
-                
-                <div className="p-4">
-                  <h3 className="text-lg font-bold text-white">{post.title}</h3>
-                  <p className="text-sm text-purple-300 mb-2">📍 {post.location}</p>
-                  <p className="text-sm text-blue-300 mb-2">🏢 {post.supplier}</p>
+            {filteredJobPosts.map((post) => {
+              // Determine image to show
+              let imageSrc = "";
+              if (post.images && post.images.length > 0) {
+                imageSrc = post.images[0];
+              } else if (post.category && post.category.length > 0) {
+                // Use first category to match image in public folder
+                imageSrc = `/${post.category[0]}.jpg`;
+              }
+
+              return (
+                <div
+                  key={post.id}
+                  className="bg-black/40 backdrop-blur-md shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+                  onClick={() => handleJobPostClick(post.id)} // <-- updated to async handler
+                >
+                  {/* Display image or placeholder */}
+                  {imageSrc ? (
+                    <Image
+                      src={imageSrc}
+                      width={400}
+                      height={200}
+                      alt={post.title}
+                      className="w-full h-40 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-40 bg-gray-700 flex items-center justify-center">
+                      <span className="text-gray-400">No Image</span>
+                    </div>
+                  )}
                   
-                  {/* Display categories */}
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {post.category.map((cat, index) => (
-                      <span 
-                        key={index}
-                        className="inline-block bg-purple-700/30 text-purple-200 text-xs px-2 py-1 rounded-full font-medium"
-                      >
-                        {cat}
-                      </span>
-                    ))}
-                  </div>
-                  
-                  <p className="mt-2 text-gray-200 text-sm line-clamp-2">
-                    {post.description}
-                  </p>
-                  
-                  {/* Stats */}
-                  <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
-                    <span>👁️ {post.views} views</span>
-                    <span>📅 {post.createdAt.toDate().toLocaleDateString()}</span>
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold text-white">{post.title}</h3>
+                    <p className="text-sm text-purple-300 mb-2">📍 {post.location}</p>
+                    <p className="text-sm text-blue-300 mb-2">🏢 {post.supplier}</p>
+                    
+                    {/* Display categories */}
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {post.category.map((cat, index) => (
+                        <span 
+                          key={index}
+                          className="inline-block bg-purple-700/30 text-purple-200 text-xs px-2 py-1 rounded-full font-medium"
+                        >
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    <p className="mt-2 text-gray-200 text-sm line-clamp-2">
+                      {post.description}
+                    </p>
+                    
+                    {/* Stats */}
+                    <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+                      <span>👁️ {post.views} views</span>
+                      <span>📅 {post.createdAt.toDate().toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

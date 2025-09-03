@@ -30,6 +30,7 @@ export default function Home() {
   const [current, setCurrent] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [showQuickFindModal, setShowQuickFindModal] = useState<boolean>(false);
+  const [showMobileAppModal, setShowMobileAppModal] = useState<boolean>(false); // NEW STATE
   const router = useRouter();
   
   // State for dynamic counts
@@ -84,8 +85,64 @@ export default function Home() {
     }, 3000);
   };
 
+  // Handle Mobile App button click
+  const handleMobileAppClick = () => {
+    setShowMobileAppModal(true);
+    setTimeout(() => {
+      setShowMobileAppModal(false);
+      router.push('/mobileapp');
+    }, 3000);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-r from-black via-purple-900 to-black text-white flex flex-col">
+      {/* Mobile App Loading Modal */}
+      {showMobileAppModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="bg-black/70 backdrop-blur-xl p-8 rounded-2xl border border-white/20 text-center"
+          >
+            <motion.img
+              src="/logo.png"
+              alt="QuickJob Logo"
+              className="h-20 mx-auto mb-6"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.h3
+              className="text-2xl font-bold text-white mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              Loading Mobile App...
+            </motion.h3>
+            <motion.div
+              className="flex justify-center space-x-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-3 h-3 bg-blue-400 rounded-full"
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: i * 0.2,
+                  }}
+                />
+              ))}
+            </motion.div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Quick Find Loading Modal */}
       {showQuickFindModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -143,7 +200,10 @@ export default function Home() {
 
         {/* Center Buttons - Mobile App & Quick Find */}
         <div className="hidden md:flex space-x-4 absolute left-1/2 transform -translate-x-1/2">
-          <button className="flex items-center space-x-2 px-5 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-blue-500/25 hover:scale-105 group">
+          <button
+            className="flex items-center space-x-2 px-5 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-blue-500/25 hover:scale-105 group"
+            onClick={handleMobileAppClick} // UPDATED
+          >
             <Smartphone className="h-5 w-5 group-hover:text-blue-400 transition-colors duration-300" />
             <span>Mobile App</span>
           </button>
@@ -185,7 +245,10 @@ export default function Home() {
             exit={{ opacity: 0, y: -20 }}
             className="absolute top-16 right-6 bg-black/70 backdrop-blur-xl p-4 rounded-xl flex flex-col space-y-3 md:hidden border border-white/10 shadow-2xl"
           >
-            <button className="flex items-center justify-center space-x-2 w-full px-4 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-blue-500/25">
+            <button
+              className="flex items-center justify-center space-x-2 w-full px-4 py-3 rounded-xl text-white font-medium hover:bg-white/20 transition-all duration-300 hover:shadow-blue-500/25"
+              onClick={handleMobileAppClick} // UPDATED
+            >
               <Smartphone className="h-5 w-5" />
               <span>Mobile App</span>
             </button>

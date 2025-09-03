@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Search, ChevronDown, Phone, MapPin, Navigation } from "lucide-react";
-import { collection, getFirestore, getDocs, query, where } from "firebase/firestore";
+import { X, Search, ChevronDown, Phone, Navigation } from "lucide-react";
+import { collection, getFirestore, getDocs, query, where, updateDoc } from "firebase/firestore";
 import { initializeApp } from "firebase/app";
 import { useRouter } from "next/navigation";
 
@@ -36,6 +36,8 @@ interface Employee {
   city: string;
   contactNumber: string;
   serviceLocation: string;
+  rating?: number;
+  ratedCount?: number;
 }
 
 interface MapData {
@@ -61,6 +63,13 @@ export default function QuickFind() {
   const [districts, setDistricts] = useState<MapData[]>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const router = useRouter();
+
+  const [lastCalledEmployee, setLastCalledEmployee] = useState<{ id: string; contactNumber: string } | null>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingValue, setRatingValue] = useState<number>(0);
+  const [reviewerEmail, setReviewerEmail] = useState("");
+  const [ratingError, setRatingError] = useState("");
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   // Fetch job categories from Firestore
   useEffect(() => {
@@ -167,7 +176,9 @@ export default function QuickFind() {
             district: data.district || "N/A",
             city: data.city || "N/A",
             contactNumber: data.contactNumber || "N/A",
-            serviceLocation: data.serviceLocation || ""
+            serviceLocation: data.serviceLocation || "",
+            rating: data.rating,
+            ratedCount: data.ratedCount
           });
         });
 
@@ -223,7 +234,11 @@ export default function QuickFind() {
   }, [searchTerm, selectedCategory, selectedDistrict, selectedCity, employees]);
 
   const handleExit = () => {
-    router.push('/');
+    if (lastCalledEmployee) {
+      setShowRatingModal(true);
+    } else {
+      router.push('/');
+    }
   };
 
   const handleHireNow = (employee: Employee) => {
@@ -522,6 +537,21 @@ export default function QuickFind() {
                         )}
                       </div>
 
+                      {/* Rating Section */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-yellow-400 text-lg">
+                          ★
+                        </span>
+                        <span className="text-white font-medium">
+                          {employee.ratedCount && employee.ratedCount > 0
+                            ? (employee.rating! / employee.ratedCount!).toFixed(1)
+                            : "No rating"}
+                        </span>
+                        <span className="text-gray-400 text-xs">
+                          {employee.ratedCount && employee.ratedCount > 0 ? `(${employee.ratedCount} ratings)` : ""}
+                        </span>
+                      </div>
+
                       {/* Action Buttons */}
                       <div className="flex flex-wrap gap-3">
                         <button
@@ -614,6 +644,7 @@ export default function QuickFind() {
               <div className="mt-6">
                 <a
                   href={`tel:${selectedEmployee.contactNumber}`}
+                  onClick={() => setLastCalledEmployee({ id: selectedEmployee.id, contactNumber: selectedEmployee.contactNumber })}
                   className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-xl text-white font-medium transition-all duration-300"
                 >
                   <Phone className="h-5 w-5" />
@@ -622,6 +653,109 @@ export default function QuickFind() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Rating Modal - Highest z-index */}
+      <AnimatePresence>
+        {showRatingModal && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-gray-900 p-8 rounded-2xl max-w-md w-full border border-purple-600/30"
+            >
+              <h3 className="text-xl font-bold mb-4 text-white text-center">Rate Your Experience</h3>
+              <div className="flex justify-center mb-4">
+                {[1,2,3,4,5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRatingValue(star)}
+                    className={`mx-1 text-3xl ${star <= ratingValue ? "text-yellow-400" : "text-gray-500"}`}
+                    aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                  >★</button>
+                ))}
+              </div>
+              <input
+                type="email"
+                placeholder="Enter your Gmail address"
+                value={reviewerEmail}
+                onChange={e => setReviewerEmail(e.target.value)}
+                className="w-full p-3 rounded-lg bg-black/40 border border-gray-600 text-white mb-3"
+                disabled={submittingRating}
+              />
+              <button
+                onClick={async () => {
+                  setRatingError("");
+                  if (ratingValue < 1 || ratingValue > 5) {
+                    setRatingError("Please select a rating (1-5 stars).");
+                    return;
+                  }
+                  if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(reviewerEmail)) {
+                    setRatingError("Please enter a valid Gmail address.");
+                    return;
+                  }
+                  setSubmittingRating(true);
+                  try {
+                    // Get current rating and ratedCount
+                    const userRef = collection(firestore, "userlog");
+                    const employeeDoc = (await getDocs(query(userRef, where("contactNumber", "==", lastCalledEmployee!.contactNumber)))).docs[0];
+                    const rating = employeeDoc?.data().rating || 0;
+                    const ratedCount = employeeDoc?.data().ratedCount || 0;
+
+                    // Update rating and ratedCount
+                    const newRating = rating + ratingValue;
+                    const newRatedCount = ratedCount + 1;
+                    await updateDoc(employeeDoc.ref, { rating: newRating, ratedCount: newRatedCount });
+
+                    // Save to ratings collection
+                    await getDocs(collection(firestore, "ratings")); // Ensure collection exists
+                    await import("firebase/firestore").then(async ({ addDoc, collection }) => {
+                      await addDoc(collection(firestore, "ratings"), {
+                        employeeId: lastCalledEmployee!.id,
+                        contactNumber: lastCalledEmployee!.contactNumber,
+                        rating: ratingValue,
+                        reviewerEmail,
+                        createdAt: new Date()
+                      });
+                    });
+
+                    setShowRatingModal(false);
+                    setLastCalledEmployee(null);
+                    setRatingValue(0);
+                    setReviewerEmail("");
+                    setRatingError("");
+                    router.push('/');
+                  } catch {
+                    setRatingError("Failed to submit rating. Try again.");
+                  } finally {
+                    setSubmittingRating(false);
+                  }
+                }}
+                className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg transition font-medium text-white mb-2"
+                disabled={submittingRating}
+              >
+                {submittingRating ? "Submitting..." : "Submit Rating"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowRatingModal(false);
+                  setLastCalledEmployee(null);
+                  setRatingValue(0);
+                  setReviewerEmail("");
+                  setRatingError("");
+                  router.push('/');
+                }}
+                className="w-full bg-gray-700 hover:bg-gray-800 py-2 rounded-lg transition font-medium text-white"
+                disabled={submittingRating}
+              >
+                Skip
+              </button>
+              {ratingError && <p className="text-red-400 text-center mt-2">{ratingError}</p>}
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

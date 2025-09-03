@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { db } from "@/lib/firebaseConfig";
 import {
   collection,
@@ -36,6 +37,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+// const logo = "/logo.png";
 
 interface Category {
   id: string;
@@ -56,6 +60,14 @@ interface District {
   cities: string[];
   createdAt: Date;
   cityCount: number;
+}
+
+interface Rating {
+  id: string;
+  employeeId: string;
+  reviewerEmail: string;
+  rating: number;
+  createdAt: Date;
 }
 
 export default function AdminDashboard() {
@@ -82,6 +94,12 @@ export default function AdminDashboard() {
   const [newCity, setNewCity] = useState("");
   const [editingDistrict, setEditingDistrict] = useState<string | null>(null);
   const [editDistrictName, setEditDistrictName] = useState("");
+
+  // Ratings states
+  const [ratings, setRatings] = useState<Rating[]>([]);
+  const [filterDate, setFilterDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [filterEmployeeId, setFilterEmployeeId] = useState("");
+  const [filteredRatings, setFilteredRatings] = useState<Rating[]>([]);
 
   useEffect(() => {
     fetchCategories();
@@ -170,6 +188,33 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch ratings from Firestore
+  useEffect(() => {
+    const fetchRatings = async () => {
+      const querySnapshot = await getDocs(collection(db, "ratings"));
+      const ratingsList: Rating[] = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        employeeId: doc.data().employeeId || "",
+        reviewerEmail: doc.data().reviewerEmail || "",
+        rating: doc.data().rating || 0,
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+      }));
+      setRatings(ratingsList);
+    };
+    fetchRatings();
+  }, []);
+
+  // Filter ratings by date or employeeId
+  useEffect(() => {
+    let filtered = ratings;
+    if (filterEmployeeId.trim()) {
+      filtered = filtered.filter(r => r.employeeId.includes(filterEmployeeId.trim()));
+    } else if (filterDate) {
+      filtered = filtered.filter(r => r.createdAt.toISOString().slice(0, 10) === filterDate);
+    }
+    setFilteredRatings(filtered);
+    setFilteredRatings(filtered);
+  }, [ratings, filterDate, filterEmployeeId]);
   // ============================
   // Firestore add/update/delete
   // ============================
@@ -304,21 +349,72 @@ export default function AdminDashboard() {
     }, 3000);
   };
 
+  // PDF Download
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    // Add logo
+    doc.addImage("/logo.png", "PNG", 80, 10, 50, 40);
+
+    // Tagline in italic, below logo
+    doc.setFont("times", "italic");
+    doc.setFontSize(14);
+    doc.text("Find Your Jobs Quickly & Safely..", 105, 55, { align: "center" });
+
+    // Add some space before the title
+    doc.setFont("times", "normal");
+    doc.setFontSize(18);
+    doc.text("Review Report", 105, 70, { align: "center" });
+
+    // Add some space before the timestamp
+    doc.setFontSize(10);
+    doc.text(`Downloaded: ${new Date().toLocaleString()}`, 15, 80);
+
+    // Table (startY adjusted for new spacing)
+    autoTable(doc, {
+      startY: 85,
+      head: [["Employee ID", "Reviewer Email", "Rating", "Created At"]],
+      body: filteredRatings.map(r => [
+        r.employeeId,
+        r.reviewerEmail,
+        "*".repeat(Math.round(r.rating)) + "☆".repeat(5 - Math.round(r.rating)),
+        r.createdAt.toLocaleString(),
+      ]),
+      theme: "grid",
+      styles: { fontSize: 10 },
+    });
+
+    // Footer page numberaa
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.text(`Page ${i} of ${pageCount}`, 105, doc.internal.pageSize.height - 10, { align: "center" });
+    }
+    doc.save("review_report.pdf");
+  };
+
   // ============================
   // Render
   // ============================
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-purple-950 text-white p-8">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div className="text-lg font-semibold">Logged as : Admin</div>
-        <Button
-          onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-700 flex items-center space-x-2"
-        >
-          <Power className="w-5 h-5" />
-          <span>Logout</span>
-        </Button>
+      <div className="relative mb-8">
+        {/* Logout button top right */}
+        <div className="absolute top-0 right-0">
+          <Button
+            onClick={handleLogout}
+            className="bg-red-600 hover:bg-red-700 flex items-center space-x-2"
+          >
+            <Power className="w-5 h-5" />
+            <span>Logout</span>
+          </Button>
+        </div>
+        {/* Centered logo and title */}
+        <div className="flex flex-col items-center">
+          <Image src="/logo.png" alt="Logo" width={160} height={160} className="h-40 w-auto mb-2" priority />
+          <span className="text-4xl font-bold mt-2">Admin Dashboard</span>
+        </div>
       </div>
 
       {/* Success Popups */}
@@ -341,15 +437,6 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
       )}
-
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-4xl font-bold text-center mb-10"
-      >
-        Admin Dashboard
-      </motion.h1>
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -398,6 +485,9 @@ export default function AdminDashboard() {
           </TabsTrigger>
           <TabsTrigger value="manageMap" className="px-4 py-2">
             <MapPin className="inline w-5 h-5 mr-2" /> Manage Map
+          </TabsTrigger>
+          <TabsTrigger value="viewRatings" className="px-4 py-2">
+            <CheckCircle className="inline w-5 h-5 mr-2" /> View Employee Rating
           </TabsTrigger>
         </TabsList>
 
@@ -689,6 +779,88 @@ export default function AdminDashboard() {
                   </ResponsiveContainer>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* View Employee Rating Tab */}
+        <TabsContent value="viewRatings" className="mt-6">
+          <Card className="bg-white/10 backdrop-blur-lg border border-white/20 shadow-xl">
+            <CardContent className="p-6">
+              {/* Logo and Title */}
+              <div className="flex flex-col items-center mb-2">
+                <Image src="/logo.png" alt="Logo" width={64} height={64} className="h-16 mb-2" priority />
+                <span className="italic text-lg text-gray-300 mb-4 mt-2">
+                  Find Your Jobs Quickly &amp; Safely..
+                </span>
+                <h2 className="text-2xl font-bold mb-4 mt-2">Review Report</h2>
+              </div>
+              {/* Filters */}
+              <div className="flex flex-wrap gap-4 mb-4">
+                <div>
+                  <label className="mr-2 text-sm">Filter by Date:</label>
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={e => { setFilterDate(e.target.value); setFilterEmployeeId(""); }}
+                    className="p-2 rounded bg-white/20 border border-white/30 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mr-2 text-sm">Filter by Employee ID:</label>
+                  <input
+                    type="text"
+                    value={filterEmployeeId}
+                    onChange={e => { setFilterEmployeeId(e.target.value); setFilterDate(""); }}
+                    placeholder="Employee ID"
+                    className="p-2 rounded bg-white/20 border border-white/30 text-white"
+                  />
+                </div>
+                <Button
+                  onClick={handleDownloadPDF}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Download PDF
+                </Button>
+              </div>
+              {/* Table View */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white/10 rounded-lg">
+                  <thead className="sticky top-0 bg-purple-900/80 z-10">
+                    <tr>
+                      <th className="p-2 text-left font-semibold">Employee ID</th>
+                      <th className="p-2 text-left font-semibold">Reviewer Email</th>
+                      <th className="p-2 text-left font-semibold">Rating</th>
+                      <th className="p-2 text-left font-semibold">Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRatings.length > 0 ? (
+                      filteredRatings.map((r, idx) => (
+                        <tr
+                          key={r.id}
+                          className={`border-b border-white/20 ${idx % 2 === 0 ? "bg-white/5" : "bg-white/15"} hover:bg-purple-800/30 transition`}
+                        >
+                          <td className="p-2">{r.employeeId}</td>
+                          <td className="p-2">{r.reviewerEmail}</td>
+                          <td className="p-2">
+                            <span className="text-yellow-400">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <span key={i} className={i < Math.round(r.rating) ? "text-yellow-400" : "text-gray-600"}>★</span>
+                              ))}
+                            </span>
+                          </td>
+                          <td className="p-2 whitespace-nowrap">{r.createdAt.toLocaleString()}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="p-2 text-center text-gray-400">No ratings found</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

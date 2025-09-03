@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { doc, updateDoc, collection, query, where, getDocs, getFirestore } from "firebase/firestore";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { FiSettings } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import app from "@/lib/firebaseConfig"; // Import the app instance
@@ -111,7 +110,7 @@ export default function EmployeeSettings() {
         setUserData(prev => ({ ...prev, city: "" }));
       }
     }
-  }, [userData.district, districts]);
+  }, [userData.district, userData.city, districts]);
 
   // Load user data from Firestore
   useEffect(() => {
@@ -148,6 +147,30 @@ export default function EmployeeSettings() {
     fetchUserData();
   }, [email]);
 
+  // Calculate average rating (floating point)
+  const [averageRating, setAverageRating] = useState<number | null>(null);
+
+  useEffect(() => {
+    // When userData loads, get rating and ratedCount from Firestore
+    if (docId) {
+      const fetchRating = async () => {
+        try {
+          const q = query(collection(firestore, "userlog"), where("email", "==", email));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            const data = querySnapshot.docs[0].data();
+            const rating = data.rating || 0;
+            const ratedCount = data.ratedCount || 0;
+            setAverageRating(ratedCount > 0 ? rating / ratedCount : null);
+          }
+        } catch {
+          setAverageRating(null);
+        }
+      };
+      fetchRating();
+    }
+  }, [docId, email]);
+
   // Handle district change
   const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedDistrict = e.target.value;
@@ -182,11 +205,7 @@ export default function EmployeeSettings() {
     setUserData({ ...userData, skills: newSkills });
   };
 
-  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setProfileImage(e.target.files[0]);
-    }
-  };
+  // Removed unused handleProfileImageChange function
 
   // Auto-get current location
   const handleGetLocation = () => {
@@ -310,28 +329,54 @@ export default function EmployeeSettings() {
           </button>
         </div>
 
-        {/* Profile Image */}
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <div className="relative">
-            <Image
-              src={profileImage ? URL.createObjectURL(profileImage) : "/user.png"}
-              width={100}
-              height={100}
-              alt="Profile"
-              className="rounded-full border-2 border-purple-600"
-            />
-            <div className="absolute bottom-0 right-0 bg-purple-600 rounded-full p-1">
-              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-              </svg>
+        {/* ⭐ Rating Display - Animated */}
+        <div className="flex flex-col items-center mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, type: "spring" }}
+            className="mb-2"
+          >
+            <span className="text-purple-300 text-lg font-semibold tracking-wide">Your Rating</span>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, type: "spring" }}
+            className="relative flex items-center justify-center"
+            style={{ width: 90, height: 90 }}
+          >
+            {/* Circle with rating value */}
+            <div className="rounded-full border-4 border-purple-500 bg-black/70 flex items-center justify-center" style={{ width: 90, height: 90 }}>
+              <span className="text-white text-2xl font-bold">
+                {averageRating !== null ? averageRating.toFixed(2) : "0.00"}
+              </span>
             </div>
-          </div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleProfileImageChange}
-            className="text-sm text-gray-300 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700"
-          />
+            {/* Stars around the circle */}
+            {Array.from({ length: 5 }).map((_, i) => {
+              // Calculate angle for each star
+              const angle = (i * 72 - 90) * (Math.PI / 180); // 72deg apart, start at top
+              const radius = 45; // half of circle size
+              const x = Math.cos(angle) * radius + 45 - 10; // center + offset - half star size
+              const y = Math.sin(angle) * radius + 45 - 10;
+              return (
+                <span
+                  key={i}
+                  className={i + 1 <= Math.round(averageRating ?? 0) ? "text-yellow-400" : "text-gray-600"}
+                  style={{
+                    position: "absolute",
+                    left: x,
+                    top: y,
+                    fontSize: 20,
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  }}
+                >
+                  ★
+                </span>
+              );
+            })}
+          </motion.div>
         </div>
 
         {/* Personal Info */}

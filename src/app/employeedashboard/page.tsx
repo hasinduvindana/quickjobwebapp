@@ -6,7 +6,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebaseConfig";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
-import { collection, getDocs, getFirestore, query, where, orderBy, Timestamp } from "firebase/firestore";
+import { collection, getDocs, getFirestore, query, where, Timestamp } from "firebase/firestore";
 
 // Initialize Firestore
 const firestore = getFirestore();

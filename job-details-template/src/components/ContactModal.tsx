@@ -2,12 +2,15 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 interface ContactModalProps {
+  isOpen: boolean;
   email: string;
   phone: string;
   onClose: () => void;
 }
 
-const ContactModal: React.FC<ContactModalProps> = ({ email, phone, onClose }) => {
+const ContactModal: React.FC<ContactModalProps> = ({ isOpen, email, phone, onClose }) => {
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
       <motion.div

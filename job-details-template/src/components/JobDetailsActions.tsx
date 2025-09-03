@@ -5,9 +5,11 @@ import ContactModal from './ContactModal';
 interface JobDetailsActionsProps {
   email: string;
   phone: string;
+  jobTitle?: string;
+  publisherEmail?: string;
 }
 
-const JobDetailsActions: React.FC<JobDetailsActionsProps> = ({ email, phone }) => {
+const JobDetailsActions: React.FC<JobDetailsActionsProps> = ({ email, phone, jobTitle = "", publisherEmail = "" }) => {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
@@ -54,6 +56,8 @@ const JobDetailsActions: React.FC<JobDetailsActionsProps> = ({ email, phone }) =
         isOpen={isApplyModalOpen} 
         onClose={closeApplyModal} 
         jobCategory="" // Pass the job category here as needed
+        jobTitle={jobTitle}
+        publisherEmail={publisherEmail}
       />
     </div>
   );

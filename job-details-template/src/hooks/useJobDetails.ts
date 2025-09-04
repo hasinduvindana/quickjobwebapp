@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { JobPost } from "@/lib/types"; // Assuming JobPost is defined in types.ts
 
 const firestore = getFirestore();
+
+export interface JobPost {
+  id: string;
+  title: string;
+  category: string[];
+  supplier: string;
+  description: string;
+  phone: string;
+  // Add other fields as needed
+}
 
 const useJobDetails = (jobId: string) => {
   const [jobDetails, setJobDetails] = useState<JobPost | null>(null);
@@ -21,6 +30,7 @@ const useJobDetails = (jobId: string) => {
           setError("Job not found");
         }
       } catch (err) {
+        console.error("Error fetching job details:", err);
         setError("Error fetching job details");
       } finally {
         setLoading(false);

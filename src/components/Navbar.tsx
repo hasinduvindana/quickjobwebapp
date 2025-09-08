@@ -8,7 +8,7 @@ import Image from "next/image";
 interface NavbarProps {
   firstName: string;
   onLogout: () => void;
-  dashboardType?: "employee" | "supplier" | "publisher";
+  dashboardType?: "employee" | "publisher";
 }
 
 export default function Navbar({ firstName, onLogout, dashboardType }: NavbarProps) {
@@ -29,9 +29,7 @@ export default function Navbar({ firstName, onLogout, dashboardType }: NavbarPro
   const handleLogoClick = () => {
     // Navigate to home or respective dashboard based on type
     if (dashboardType === "employee") {
-      router.push("/employeedashboard");
-    } else if (dashboardType === "supplier") {
-      router.push("/supplierdashboard");
+      router.push("/employeedashboard");    
     } else if (dashboardType === "publisher") {
       router.push("/publisherdashboard");
     } else {

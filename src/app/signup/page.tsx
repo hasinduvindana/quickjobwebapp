@@ -4,7 +4,7 @@ import { useState } from "react";
 import { auth } from "@/lib/firebaseConfig";
 import app from "@/lib/firebaseConfig";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -37,6 +37,18 @@ export default function SignupPage() {
       const user = result.user;
 
       const firestore = getFirestore(app);
+
+      // Check if email already exists in userlog collection
+      const q = query(
+        collection(firestore, "userlog"),
+        where("email", "==", user.email)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        setError("This email is already registered.");
+        return;
+      }
+
       await addDoc(collection(firestore, "userlog"), {
         firstName,
         lastName,

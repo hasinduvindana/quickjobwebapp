@@ -375,7 +375,7 @@ export default function AdminDashboard() {
       body: filteredRatings.map(r => [
         r.employeeId,
         r.reviewerEmail,
-        "*".repeat(Math.round(r.rating)) + "☆".repeat(5 - Math.round(r.rating)),
+        r.rating.toFixed(2), // <-- Show rating as floating number (e.g. 4.25)
         r.createdAt.toLocaleString(),
       ]),
       theme: "grid",

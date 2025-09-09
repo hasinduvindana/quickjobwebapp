@@ -39,7 +39,6 @@ import {
 } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-// const logo = "/logo.png";
 
 interface Category {
   id: string;
@@ -352,20 +351,20 @@ export default function AdminDashboard() {
   // PDF Download
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
-    // Add logo
+    //logo
     doc.addImage("/logo.png", "PNG", 80, 10, 50, 40);
 
-    // Tagline in italic, below logo
+    // sub text , italic
     doc.setFont("times", "italic");
     doc.setFontSize(14);
     doc.text("Find Your Jobs Quickly & Safely..", 105, 55, { align: "center" });
 
-    // Add some space before the title
+    // space before the title
     doc.setFont("times", "normal");
     doc.setFontSize(18);
     doc.text("Review Report", 105, 70, { align: "center" });
 
-    // Add some space before the timestamp
+    // space before the timestamp
     doc.setFontSize(10);
     doc.text(`Downloaded: ${new Date().toLocaleString()}`, 15, 80);
 
@@ -383,7 +382,7 @@ export default function AdminDashboard() {
       styles: { fontSize: 10 },
     });
 
-    // Footer page numberaa
+    // Footer page number Page 1 0f 1
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);

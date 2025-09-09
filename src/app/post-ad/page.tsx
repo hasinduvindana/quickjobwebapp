@@ -152,7 +152,7 @@ export default function PostAd() {
     if (fileInput) fileInput.value = "";
   };
 
-  // ✅ Upload images and always return correct download URLs
+  // Upload images and always return correct download URLs
   const uploadImages = async (images: File[]): Promise<string[]> => {
     const uploadPromises = images.map(async (image, index) => {
       try {
@@ -165,7 +165,7 @@ export default function PostAd() {
         const downloadURL = await getDownloadURL(snapshot.ref);
         console.log("✅ Uploaded:", fileName, "URL:", downloadURL);
 
-        return downloadURL; // ✅ full working URL
+        return downloadURL; // full working URL
       } catch (error) {
         console.error(`❌ Error uploading ${image.name}:`, error);
         throw error;
@@ -235,7 +235,7 @@ export default function PostAd() {
         setUploadProgress(75);
       }
 
-      // ✅ Save only the correct full URLs
+      // Save only the correct full URLs
       const docRef = await addDoc(collection(firestore, "jobposts"), {
         title: formData.title.trim(),
         category: formData.category,
@@ -244,7 +244,7 @@ export default function PostAd() {
         phone: formData.phone.trim(),
         email: formData.email.trim().toLowerCase(),
         location: formData.location.trim(),
-        images: imageUrls, // ✅ only valid download URLs
+        images: imageUrls, // only valid download URLs
         imageCount: imageUrls.length,
         publisherEmail,
         createdAt: Timestamp.now(),

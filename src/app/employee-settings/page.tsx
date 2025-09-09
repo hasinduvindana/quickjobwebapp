@@ -5,7 +5,7 @@ import { doc, updateDoc, collection, query, where, getDocs, getFirestore } from 
 import { motion } from "framer-motion";
 import { FiSettings } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-import app from "@/lib/firebaseConfig"; // Import the app instance
+import app from "@/lib/firebaseConfig";
 
 // Initialize Firestore
 const firestore = getFirestore(app);
@@ -50,18 +50,18 @@ export default function EmployeeSettings() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
 
-  // Add state for districts and cities
+  // state for districts and cities
   const [districts, setDistricts] = useState<District[]>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [districtsLoading, setDistrictsLoading] = useState(true);
 
-  // Add state for job categories
+  // state for job categories
   const [jobCategories, setJobCategories] = useState<string[]>([]);
 
-  // ✅ Get email from localStorage (with safety check)
+  // Get email from Firebase collection
   const [email, setEmail] = useState<string | null>(null);
 
-  // Get email from localStorage after component mounts
+  
   useEffect(() => {
     const storedEmail = localStorage.getItem("email");
     setEmail(storedEmail);
@@ -141,7 +141,7 @@ export default function EmployeeSettings() {
         if (!querySnapshot.empty) {
           const docSnap = querySnapshot.docs[0];
           const userDataFromDb = docSnap.data();
-          setDocId(docSnap.id); // ✅ save doc ID
+          setDocId(docSnap.id);
           setUserData((prev) => ({
             ...prev,
             firstName: userDataFromDb.firstName || "",
@@ -168,7 +168,7 @@ export default function EmployeeSettings() {
   const [averageRating, setAverageRating] = useState<number | null>(null);
 
   useEffect(() => {
-    // When userData loads, get rating and ratedCount from Firestore
+    // get rating and ratedCount from Firestore
     if (docId) {
       const fetchRating = async () => {
         try {
@@ -194,7 +194,7 @@ export default function EmployeeSettings() {
     setUserData({ 
       ...userData, 
       district: selectedDistrict,
-      city: "" // Reset city when district changes
+      city: ""
     });
   };
 
@@ -221,9 +221,7 @@ export default function EmployeeSettings() {
     newSkills[index][field] = value;
     setUserData({ ...userData, skills: newSkills });
   };
-
-  // Removed unused handleProfileImageChange function
-
+  
   // Add state for location loading
   const [locationLoading, setLocationLoading] = useState(false);
 
@@ -271,7 +269,7 @@ export default function EmployeeSettings() {
     setProfileImage(null);
   };
 
-  // ✅ Save updates back to same userlog document
+  // Save updates back to same userlog document
   const handleSave = async () => {
     // Enhanced validations
     if (!userData.firstName || !userData.lastName || !userData.contactNumber) {
